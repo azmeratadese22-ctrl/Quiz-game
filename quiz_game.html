@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quick Quiz+</title>
+  <style>
+    :root{
+      --bg:#0f1220;--card:#171a2b;--accent:#6cd4ff;--accent2:#9eff8f;--text:#e7e9f3;--muted:#9aa0b4;--danger:#ff6b6b;--warn:#ffd166;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% -10%, #1b2042 0%, var(--bg) 40%), radial-gradient(1000px 600px at 110% 10%, #1a294a 0%, transparent 40%), var(--bg);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{ width: min(920px, 100%); }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.00)), var(--card);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    header{padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid rgba(255,255,255,0.06)}
+    header h1{font-size:18px; margin:0; letter-spacing:.3px}
+    header .pill{font-size:12px; color:var(--bg); background:linear-gradient(90deg,var(--accent),var(--accent2)); padding:6px 10px; border-radius:999px; font-weight:700}
+
+    main{padding:24px}
+    .grid{display:grid; grid-template-columns:1fr; gap:16px}
+    @media (min-width:700px){ .grid{grid-template-columns: 1.2fr .8fr;} }
+
+    .panel{padding:18px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px}
+
+    .row{display:flex; gap:8px; flex-wrap:wrap}
+
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03);
+      color:var(--text); padding:12px 14px; border-radius:12px; cursor:pointer; font-weight:600; letter-spacing:.2px;
+      transition: transform .04s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); background:rgba(255,255,255,0.06); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none }
+    .btn.primary{ background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border-color: rgba(108,212,255,.5)}
+    .btn.accent{ background:linear-gradient(90deg, var(--accent), var(--accent2)); border-color: transparent; color:#04121b }
+    .btn.danger{ border-color: rgba(255,107,107,.6); }
+
+    .select{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{border:1px solid rgba(255,255,255,0.10); padding:10px 12px; border-radius:999px; cursor:pointer}
+    .chip input{display:none}
+    .chip.active{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(108,212,255,.25) inset }
+
+    .title{font-size:22px; margin:0 0 8px}
+    .muted{color:var(--muted)}
+
+    .qtext{font-size:20px; line-height:1.4}
+
+    .answers{display:grid; grid-template-columns:1fr; gap:10px}
+    @media (min-width:700px){ .answers{grid-template-columns:1fr 1fr} }
+
+    .ans{ border-radius:12px; padding:12px 14px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); cursor:pointer; text-align:left; display:flex; gap:10px; align-items:flex-start}
+    .ans:hover{ background: rgba(255,255,255,0.06)}
+    .ans.correct{ border-color: rgba(158,255,143,.7); background: linear-gradient(180deg, rgba(158,255,143,.18), rgba(255,255,255,0.02)) }
+    .ans.wrong{ border-color: rgba(255,107,107,.7); background: linear-gradient(180deg, rgba(255,107,107,.12), rgba(255,255,255,0.02)) }
+
+    .meta{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .progress{height:10px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden}
+    .progress>div{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%}
+
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; border:1px solid rgba(255,255,255,0.20); padding:2px 6px; border-radius:6px}
+
+    .stat{display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.04); padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.08)}
+
+    footer{padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px}
+
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="app card" role="application" aria-label="Quick Quiz Plus">
+    <header>
+      <h1>Quick Quiz<span aria-hidden>+</span></h1>
+      <span id="highScorePill" class="pill" title="Your best score">Best: 0</span>
+    </header>
+
+    <main>
+      <!-- Setup Screen -->
+      <section id="setup" class="grid">
+        <div class="panel" aria-labelledby="setupTitle">
+          <h2 id="setupTitle" class="title">Choose your quiz</h2>
+          <p class="muted">Pick a category and number of questions. You get <strong>15s</strong> per question. Shortcuts: <span class="kbd">1</span>–<span class="kbd">4</span>.</p>
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <div class="muted" style="margin-bottom:6px">Category</div>
+              <div id="catGroup" class="select" role="radiogroup" aria-label="Category">
+                <!-- chips injected by JS -->
+              </div>
+            </div>
+            <div>
+              <div class="muted" style="margin-bottom:6px">Questions</div>
+              <div class="select" aria-label="Question count">
+                <label class="chip"><input type="radio" name="count" value="5" checked>5</label>
+                <label class="chip"><input type="radio" name="count" value="10">10</label>
+                <label class="chip"><input type="radio" name="count" value="15">15</label>
+                <label class="chip"><input type="radio" name="count" value="20">20</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button id="startBtn" class="btn accent" aria-label="Start quiz">Start Quiz</button>
+            <button id="importBtn" class="btn" title="Load questions from a JSON file">Import JSON</button>
+            <button id="exportBtn" class="btn" title="Export the current question bank to JSON">Export JSON</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 class="title">How to play</h3>
+          <ul>
+            <li>Each question has one correct answer. Click or press <span class="kbd">1</span>–<span class="kbd">4</span>.</li>
+            <li>You have <strong>15 seconds</strong>. Timeouts count as wrong.</li>
+            <li>Use lifelines once per game: <strong>50/50</strong> and <strong>Skip</strong>.</li>
+            <li>Best score is saved on this device.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Quiz Screen -->
+      <section id="quiz" class="hidden">
+        <div class="panel" aria-live="polite" aria-atomic="true">
+          <div class="meta" style="justify-content:space-between; margin-bottom:8px">
+            <div class="meta" role="status">
+              <div class="stat" title="Question index"><strong id="idx">1</strong>/<span id="total">10</span></div>
+              <div class="stat" title="Score">Score: <strong id="score">0</strong></div>
+              <div class="stat" title="Timer">⏱ <strong id="timer">15</strong>s</div>
+            </div>
+            <div class="row">
+              <button id="fiftyBtn" class="btn" aria-label="Use 50/50 lifeline">50/50</button>
+              <button id="skipBtn" class="btn" aria-label="Skip this question">Skip</button>
+            </div>
+          </div>
+
+          <div class="progress" aria-hidden><div id="bar"></div></div>
+
+          <h2 id="qtext" class="qtext" style="margin:16px 0 10px">Question text</h2>
+          <div id="answers" class="answers" role="list"></div>
+
+          <div class="row" style="margin-top:10px">
+            <button id="nextBtn" class="btn primary" disabled>Next</button>
+            <button id="quitBtn" class="btn danger">Quit</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Screen -->
+      <section id="results" class="hidden">
+        <div class="panel">
+          <h2 class="title">Results</h2>
+          <p><strong id="finalScore">0</strong> / <span id="finalTotal">0</span> correct • <span id="accuracy">0%</span> accuracy</p>
+          <div class="row" style="margin:10px 0 16px">
+            <button id="playAgainBtn" class="btn accent">Play Again</button>
+            <button id="reviewBtn" class="btn">Review Answers</button>
+          </div>
+          <div id="review" class="panel hidden" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="muted">A simple offline quiz. Made to run in one HTML file.</div>
+      <div class="muted">Keyboard: <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span>, <span class="kbd">N</span>ext, <span class="kbd">Q</span>uit</div>
+    </footer>
+  </div>
+
+  <input id="fileInput" type="file" accept="application/json" class="hidden" />
+
+  <script>
+  // ====== Question Bank (edit or import your own) ======
+  const QUESTION_BANK = [
+    // General
+    { c:"General", q:"What is the capital of France?", a:["Paris","Lyon","Marseille","Nice"], correct:0 },
+    { c:"General", q:"Which planet is known as the Red Planet?", a:["Venus","Mars","Jupiter","Mercury"], correct:1 },
+    { c:"General", q:"How many continents are there?", a:["5","6","7","8"], correct:2 },
+    { c:"General", q:"What is H2O commonly called?", a:["Salt","Hydrogen","Water","Helium"], correct:2 },
+
+    // Science
+    { c:"Science", q:"What gas do plants absorb for photosynthesis?", a:["Oxygen","Carbon Dioxide","Nitrogen","Hydrogen"], correct:1 },
+    { c:"Science", q:"Speed is distance over…?", a:["Time","Mass","Force","Energy"], correct:0 },
+    { c:"Science", q:"Earth's largest organ (human body)?", a:["Liver","Skin","Lungs","Brain"], correct:1 },
+    { c:"Science", q:"Unit of electric current?", a:["Volt","Ohm","Ampere","Watt"], correct:2 },
+
+    // History
+    { c:"History", q:"Who was the first President of the United States?", a:["George Washington","Abraham Lincoln","John Adams","Thomas Jefferson"], correct:0 },
+    { c:"History", q:"In which year did World War II end?", a:["1942","1945","1948","1950"], correct:1 },
+    { c:"History", q:"The pyramids are located in which country?", a:["Mexico","Egypt","Peru","Sudan"], correct:1 },
+    { c:"History", q:"Who discovered penicillin?", a:["Marie Curie","Alexander Fleming","Isaac Newton","Louis Pasteur"], correct:1 },
+  ];
+
+  // ====== State ======
+  let state = {
+    all: [...QUESTION_BANK],
+    pool: [],
+    idx: 0,
+    score: 0,
+    usedFifty: false,
+    usedSkip: false,
+    timer: 15,
+    countdown: null,
+    selection: null,
+    review: [],
+    current: null
+  };
+
+  const el = id => document.getElementById(id);
+  const qs = sel => document.querySelector(sel);
+
+  // ====== Elements ======
+  const setupSec = el('setup');
+  const quizSec = el('quiz');
+  const resultsSec = el('results');
+  const answersEl = el('answers');
+  const qtextEl = el('qtext');
+  const timerEl = el('timer');
+  const idxEl = el('idx');
+  const totalEl = el('total');
+  const barEl = el('bar');
+  const scoreEl = el('score');
+  const nextBtn = el('nextBtn');
+  const skipBtn = el('skipBtn');
+  const fiftyBtn = el('fiftyBtn');
+  const quitBtn = el('quitBtn');
+  const startBtn = el('startBtn');
+  const catGroup = el('catGroup');
+  const exportBtn = el('exportBtn');
+  const importBtn = el('importBtn');
+  const fileInput = el('fileInput');
+  const highScorePill = el('highScorePill');
+
+  const finalScore = el('finalScore');
+  const finalTotal = el('finalTotal');
+  const accuracy = el('accuracy');
+  const playAgainBtn = el('playAgainBtn');
+  const reviewBtn = el('reviewBtn');
+  const reviewBox = el('review');
+
+  // ====== Utils ======
+  const categories = () => Array.from(new Set(state.all.map(x=>x.c)));
+  const shuffle = arr => { for (let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+  const sample = (arr, n) => shuffle([...arr]).slice(0, n);
+  const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
+
+  function setHighScore(v){ localStorage.setItem('qq_high', String(v)); }
+  function getHighScore(){ return Number(localStorage.getItem('qq_high')||0); }
+
+  // Build category chips
+  function renderCategoryChips(){
+    catGroup.innerHTML = '';
+    const cats = categories();
+    cats.forEach((c,i)=>{
+      const lbl = document.createElement('label');
+      lbl.className = 'chip'+(i===0?' active':'');
+      lbl.setAttribute('role','radio');
+      lbl.setAttribute('aria-checked', i===0 ? 'true':'false');
+      lbl.innerHTML = `<input type="radio" name="cat" value="${c}" ${i===0?'checked':''}>${c}`;
+      lbl.addEventListener('click',()=>{
+        catGroup.querySelectorAll('.chip').forEach(ch=>{ch.classList.remove('active'); ch.setAttribute('aria-checked','false');});
+        lbl.classList.add('active'); lbl.setAttribute('aria-checked','true');
+      });
+      catGroup.appendChild(lbl);
+    });
+  }
+
+  function getSelectedCategory(){
+    const inp = catGroup.querySelector('input[name="cat"]:checked');
+    return inp ? inp.value : categories()[0];
+  }
+
+  function getSelectedCount(){
+    const inp = document.querySelector('input[name="count"]:checked');
+    return Number(inp?.value||10);
+  }
+
+  // ====== Game Flow ======
+  function startGame(){
+    const cat = getSelectedCategory();
+    const count = getSelectedCount();
+    const pool = state.all.filter(q=>q.c===cat);
+    state.pool = sample(pool, clamp(count, 1, pool.length));
+    state.idx = 0; state.score = 0; state.usedFifty=false; state.usedSkip=false; state.review=[];
+    totalEl.textContent = state.pool.length;
+    scoreEl.textContent = '0';
+    show('quiz');
+    nextBtn.disabled = true;
+    renderQuestion();
+  }
+
+  function renderQuestion(){
+    clearInterval(state.countdown);
+    nextBtn.disabled = true; state.selection = null;
+
+    const q = state.pool[state.idx];
+    state.current = q;
+    idxEl.textContent = state.idx+1;
+    qtextEl.textContent = q.q;
+    timerEl.textContent = state.timer = 15;
+    barEl.style.width = '0%';
+
+    answersEl.innerHTML='';
+    q.a.forEach((text, i)=>{
+      const li = document.createElement('button');
+      li.className = 'ans'; li.setAttribute('role','listitem'); li.innerHTML = `<strong class="kbd">${i+1}</strong> <span>${text}</span>`;
+      li.addEventListener('click', ()=> choose(i));
+      answersEl.appendChild(li);
+    });
+
+    // lifeline buttons
+    fiftyBtn.disabled = state.usedFifty;
+    skipBtn.disabled = state.usedSkip;
+
+    // Start timer
+    const total = 15;
+    let t = total;
+    state.countdown = setInterval(()=>{
+      t--; state.timer = t; timerEl.textContent = t; barEl.style.width = `${(1 - t/total)*100}%`;
+      if(t<=0){ clearInterval(state.countdown); lockAnswers(); mark(null); }
+    }, 1000);
+  }
+
+  function choose(i){ if(nextBtn.disabled===false) return; // already answered
+    lockAnswers(); mark(i);
+  }
+
+  function lockAnswers(){
+    answersEl.querySelectorAll('button').forEach(b=> b.disabled = true);
+  }
+
+  function mark(sel){
+    const q = state.current;
+    const nodes = [...answersEl.children];
+    nodes[q.correct].classList.add('correct');
+    if(sel!==null){ nodes[sel].classList.add(sel===q.correct?'correct':'wrong'); }
+    const ok = sel===q.correct;
+    if(ok) state.score++;
+    scoreEl.textContent = String(state.score);
+    nextBtn.disabled = false;
+    clearInterval(state.countdown);
+
+    // save review
+    state.review.push({ q:q.q, a:q.a, correct:q.correct, picked: sel, timedOut: sel===null });
+  }
+
+  function next(){
+    if(state.idx < state.pool.length-1){ state.idx++; renderQuestion(); }
+    else { finish(); }
+  }
+
+  function finish(){
+    show('results');
+    finalScore.textContent = String(state.score);
+    finalTotal.textContent = String(state.pool.length);
+    const acc = Math.round((state.score/state.pool.length)*100);
+    accuracy.textContent = `${acc}%`;
+
+    const best = getHighScore();
+    if(state.score>best){ setHighScore(state.score); }
+    updateHighBadge();
+
+    reviewBox.innerHTML = '';
+  }
+
+  function quit(){ show('setup'); clearInterval(state.countdown); }
+
+  function show(which){
+    setupSec.classList.add('hidden'); quizSec.classList.add('hidden'); resultsSec.classList.add('hidden');
+    if(which==='setup') setupSec.classList.remove('hidden');
+    if(which==='quiz') quizSec.classList.remove('hidden');
+    if(which==='results') resultsSec.classList.remove('hidden');
+  }
+
+  function useFifty(){
+    if(state.usedFifty) return; state.usedFifty=true; fiftyBtn.disabled=true;
+    const q = state.current; const wrongs = [0,1,2,3].filter(i=>i!==q.correct);
+    const hide = sample(wrongs,2);
+    [...answersEl.children].forEach((b,i)=>{ if(hide.includes(i)) { b.disabled=true; b.style.opacity=.5; } });
+  }
+
+  function useSkip(){
+    if(state.usedSkip) return; state.usedSkip=true; skipBtn.disabled=true;
+    clearInterval(state.countdown);
+    state.review.push({ q: state.current.q, a: state.current.a, correct: state.current.correct, picked: null, timedOut: false, skipped:true});
+    next();
+  }
+
+  function updateHighBadge(){ highScorePill.textContent = 'Best: '+getHighScore(); }
+
+  function exportJSON(){
+    const data = JSON.stringify(state.all, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'quiz_questions.json'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function importJSON(){ fileInput.click(); }
+
+  fileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      const text = await file.text();
+      const arr = JSON.parse(text);
+      if(!Array.isArray(arr)) throw new Error('Invalid JSON format');
+      // validate quick shape
+      const ok = arr.every(o=> typeof o.c==='string' && typeof o.q==='string' && Array.isArray(o.a) && Number.isInteger(o.correct));
+      if(!ok) throw new Error('Each item must have {c, q, a[], correct}');
+      state.all = arr; renderCategoryChips(); alert('Questions imported!');
+    }catch(err){ alert('Import failed: '+err.message); }
+    finally{ fileInput.value=''; }
+  });
+
+  function buildReview(){
+    const frag = document.createDocumentFragment();
+    state.review.forEach((r, i)=>{
+      const div = document.createElement('div');
+      div.className = 'panel';
+      const pickedText = r.picked===null ? (r.skipped?'Skipped':'No answer') : r.a[r.picked];
+      const correctText = r.a[r.correct];
+      div.innerHTML = `
+        <div class="muted" style="margin-bottom:8px">#${i+1}</div>
+        <div style="margin-bottom:8px">${r.q}</div>
+        <div class="row">
+          <span class="stat">Your answer: <strong>${pickedText??''}</strong></span>
+          <span class="stat">Correct: <strong>${correctText}</strong></span>
+          ${r.picked===r.correct?'<span class="stat">✅ Correct</span>':'<span class="stat">❌ Wrong</span>'}
+        </div>`;
+      frag.appendChild(div);
+    });
+    reviewBox.appendChild(frag);
+  }
+
+  // ====== Events ======
+  startBtn.addEventListener('click', startGame);
+  nextBtn.addEventListener('click', next);
+  quitBtn.addEventListener('click', quit);
+  fiftyBtn.addEventListener('click', useFifty);
+  skipBtn.addEventListener('click', useSkip);
+  exportBtn.addEventListener('click', exportJSON);
+  importBtn.addEventListener('click', importJSON);
+  playAgainBtn.addEventListener('click', ()=>{ show('setup'); });
+  reviewBtn.addEventListener('click', ()=>{ reviewBox.classList.toggle('hidden'); if(!reviewBox.dataset.built){ buildReview(); reviewBox.dataset.built=true; } });
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e)=>{
+    if(quizSec.classList.contains('hidden')) return;
+    const num = parseInt(e.key, 10);
+    if(num>=1 && num<=4){ const btn = answersEl.children[num-1]; if(btn && !btn.disabled) btn.click(); }
+    if(e.key.toLowerCase()==='n' && !nextBtn.disabled) nextBtn.click();
+    if(e.key.toLowerCase()==='q') quitBtn.click();
+  });
+
+  // Init
+  updateHighBadge();
+  renderCategoryChips();
+  </script>
+</body>
+</html>
